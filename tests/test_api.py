@@ -1,7 +1,7 @@
 from fastapi.testclient import TestClient
 import api
 from api import app
-
+from utils.rate_limiting import LIMITE_POR_IP
 
 client = TestClient(app)
 
@@ -156,3 +156,14 @@ def test_login_matricula_inexistente_executa_verificacao_falsa(monkeypatch):
 
     assert resposta.status_code == 401
     assert chamadas == ["senha-ficticia"]
+
+
+def test_login_retorna_429_apos_tentativas_falhas(monkeypatch):
+    monkeypatch.setattr(api, "consultar_usuario_login", lambda matricula: None)
+    monkeypatch.setattr(api, "verificar_senha_falsa", lambda senha: None)
+    corpo = {"matricula": "99999", "senha": "senha-ficticia"}
+
+    for _ in range(LIMITE_POR_IP):
+        assert client.post("/auth/login", json=corpo).status_code == 401
+
+    assert client.post("/auth/login", json=corpo).status_code == 429

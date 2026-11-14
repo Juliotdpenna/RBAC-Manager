@@ -1348,7 +1348,7 @@ def adicionar_role_ao_grupo(
 def realizar_login(dados: LoginEntrada, request: Request):
     ip = request.client.host if request.client else "desconhecido"
 
-    if not verificar_limite(ip):
+    if not verificar_limite(ip, dados.matricula):
         logger.warning(
             "LOGIN_BLOQUEADO | IP=%s",
             ip
@@ -1361,7 +1361,7 @@ def realizar_login(dados: LoginEntrada, request: Request):
     registro = consultar_usuario_login(dados.matricula)
 
     if registro is None:
-        registrar_tentativa_falha(ip)
+        registrar_tentativa_falha(ip, dados.matricula)
         verificar_senha_falsa(dados.senha)
         logger.warning(
             "LOGIN_FALHA | Motivo=Usuario_nao_encontrado | IP=%s",
@@ -1375,7 +1375,7 @@ def realizar_login(dados: LoginEntrada, request: Request):
     usuario_id, _, status, senha_hash = registro
 
     if not status or not senha_hash:
-        registrar_tentativa_falha(ip)
+        registrar_tentativa_falha(ip, dados.matricula)
         verificar_senha_falsa(dados.senha)  
         logger.warning(
             "LOGIN_FALHA | Usuario_ID=%s | Motivo=Usuario_inativo_ou_sem_hash | IP=%s",
@@ -1388,7 +1388,7 @@ def realizar_login(dados: LoginEntrada, request: Request):
         )
 
     if not verificar_senha(dados.senha, senha_hash):
-        registrar_tentativa_falha(ip)
+        registrar_tentativa_falha(ip, dados.matricula)
         logger.warning(
             "LOGIN_FALHA | Usuario_ID=%s | Motivo=Senha_invalida | IP=%s",
             usuario_id,
