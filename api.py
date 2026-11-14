@@ -79,6 +79,7 @@ Nome = Annotated[str, Field(max_length=100)]
 Descricao = Annotated[str, Field(max_length=255)]
 Matricula = Annotated[str, Field(max_length=50)]
 
+
 def bloquear_role_protegida(role_id: int):
     role = next((r for r in consultar_roles() if r.id == role_id), None)
 
@@ -88,6 +89,7 @@ def bloquear_role_protegida(role_id: int):
             detail="Esta Role é protegida e não pode ser alterada.",
         )
 
+
 def exigir_posse_das_permissoes(usuario, permissoes):
     if any(not usuario.pode_acessar(p) for p in permissoes):
         raise HTTPException(
@@ -95,11 +97,12 @@ def exigir_posse_das_permissoes(usuario, permissoes):
             detail="Você não pode conceder permissões que não possui.",
         )
 
+
 class UsuarioCriacao(BaseModel):
     nome: Nome
     matricula: Matricula
-    departamento: str
-    cargo: str
+    departamento: Nome
+    cargo: Nome
     senha: str = Field(min_length=12, max_length=128)
 
     @field_validator("nome", "matricula", "departamento", "cargo")
@@ -115,8 +118,8 @@ class UsuarioCriacao(BaseModel):
 class UsuarioAtualizacao(BaseModel):
     nome: Nome
     matricula: Matricula
-    departamento: str
-    cargo: str
+    departamento: Nome
+    cargo: Nome
 
     @field_validator("nome", "matricula", "departamento", "cargo")
     @classmethod
@@ -186,11 +189,9 @@ class PermissaoAtualizacao(BaseModel):
         return valor
 
 class LoginEntrada(BaseModel):
-    matricula: str = Field(min_length=1)
-    senha: str = Field(min_length=1)
     matricula: str = Field(min_length=1, max_length=50)
     senha: str = Field(min_length=1, max_length=128)
-    
+
     @field_validator("matricula")
     @classmethod
     def validar_matricula(cls, valor):
@@ -202,11 +203,9 @@ class LoginEntrada(BaseModel):
         return valor
 
 class GrupoEntrada(BaseModel):
-    nome: str = Field(min_length=1)
-    descricao: str = Field(min_length=1)
-    status: bool
     nome: str = Field(min_length=1, max_length=100)
     descricao: str = Field(min_length=1, max_length=255)
+    status: bool
 
     @field_validator("nome", "descricao")
     @classmethod
