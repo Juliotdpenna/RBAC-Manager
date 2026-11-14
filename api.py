@@ -378,7 +378,12 @@ def atualizar_usuario_api(
             status_code=409,
             detail="A matrícula informada já está cadastrada.",
         )
-
+    except ValueError:
+        raise HTTPException(
+            status_code=404,
+            detail="Usuário não encontrado.",
+        )
+       
     except Exception:
         raise HTTPException(
             status_code=500,
@@ -1245,6 +1250,17 @@ def adicionar_usuario_ao_grupo(
     if any(u.id == usuario_id for u in grupo.usuarios):
         raise HTTPException(status_code=409, detail="Usuário já pertence ao grupo.")
 
+    exigir_posse_das_permissoes(
+        usuario_autenticado,
+        [
+            p
+            for r in grupo.roles
+            if r.status
+            for p in r.permissoes
+            if p.status
+        ],
+    )
+
     try:
         associar_usuario_grupo(grupo_id, usuario_id)
         logger.info(
@@ -1360,6 +1376,7 @@ def realizar_login(dados: LoginEntrada, request: Request):
 
     if not status or not senha_hash:
         registrar_tentativa_falha(ip)
+        verificar_senha_falsa(dados.senha)  
         logger.warning(
             "LOGIN_FALHA | Usuario_ID=%s | Motivo=Usuario_inativo_ou_sem_hash | IP=%s",
             usuario_id,

@@ -27,6 +27,7 @@ def verificar_senha(senha: str, senha_hash: str) -> bool:
     ):
         return False
 
+
 HASH_FALSO = hasher.hash("senha-falsa-para-igualar-o-tempo")
 
 

@@ -1,4 +1,5 @@
 from fastapi.testclient import TestClient
+import api
 from api import app
 
 
@@ -21,8 +22,6 @@ def test_listar_usuarios_sem_token():
     resposta = client.get("/usuarios")
 
     assert resposta.status_code == 401
-
-import api
 
 
 def test_login_com_credenciais_validas(monkeypatch):
@@ -119,6 +118,28 @@ def test_login_com_senha_gigante():
     )
 
     assert resposta.status_code == 422
+
+
+def test_login_usuario_inativo_executa_verificacao_falsa(monkeypatch):
+    chamadas = []
+
+    monkeypatch.setattr(
+        api,
+        "consultar_usuario_login",
+        lambda matricula: (1, "12345", False, "hash-ficticio"),
+    )
+    monkeypatch.setattr(
+        api, "verificar_senha_falsa", lambda senha: chamadas.append(senha)
+    )
+
+    resposta = client.post(
+        "/auth/login",
+        json={"matricula": "12345", "senha": "senha-ficticia"},
+    )
+
+    assert resposta.status_code == 401
+    assert chamadas == ["senha-ficticia"]
+
 
 def test_login_matricula_inexistente_executa_verificacao_falsa(monkeypatch):
     chamadas = []

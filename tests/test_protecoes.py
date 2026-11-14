@@ -8,6 +8,7 @@ from models.permissao import Permissao
 from models.usuario import Usuario
 from utils.autenticacao import obter_usuario_atual
 from models.role import Role
+from models.grupo import Grupo
 
 client = TestClient(app)
 
@@ -17,7 +18,7 @@ def admin_simulado(monkeypatch):
     admin = Usuario(7, "Admin", "ADM", "TI", "Admin", True, None)
     admin.pode_acessar = lambda permissao: True
 
-    nomes = ["DESATIVAR_USUARIOS", "GERENCIAR_PERMISSOES", "GERENCIAR_ROLES"]
+    nomes = ["DESATIVAR_USUARIOS", "GERENCIAR_PERMISSOES", "GERENCIAR_ROLES", "GERENCIAR_GRUPOS"]
     permissoes = [
         Permissao(i + 1, nome, "descricao", True)
         for i, nome in enumerate(nomes)
@@ -30,6 +31,26 @@ def admin_simulado(monkeypatch):
     yield admin
 
     app.dependency_overrides.clear()
+
+
+def test_nao_adiciona_usuario_a_grupo_com_permissoes_que_nao_possui(
+    admin_simulado, monkeypatch
+):
+    admin_simulado.pode_acessar = (
+        lambda permissao: permissao.nome == "GERENCIAR_GRUPOS"
+    )
+    role = Role(5, "ROLE_PODEROSA", "descricao", True)
+    role.permissoes = [Permissao(60, "VISUALIZAR_CRM", "descricao", True)]
+    grupo = Grupo(3, "Grupo", "descricao", True)
+    grupo.roles.append(role)
+    alvo = Usuario(9, "Alvo", "M9", "TI", "Cargo", True, None)
+
+    monkeypatch.setattr(api, "consultar_grupos", lambda: [grupo])
+    monkeypatch.setattr(api, "consultar_usuarios", lambda: [alvo])
+
+    resposta = client.post("/grupos/3/usuarios/9")
+
+    assert resposta.status_code == 403
 
 
 def test_nao_permite_desativar_a_propria_conta(admin_simulado):
