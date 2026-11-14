@@ -7,6 +7,7 @@ from api import app
 from models.permissao import Permissao
 from models.usuario import Usuario
 from utils.autenticacao import obter_usuario_atual
+from models.role import Role
 
 client = TestClient(app)
 
@@ -16,7 +17,7 @@ def admin_simulado(monkeypatch):
     admin = Usuario(7, "Admin", "ADM", "TI", "Admin", True, None)
     admin.pode_acessar = lambda permissao: True
 
-    nomes = ["DESATIVAR_USUARIOS", "GERENCIAR_PERMISSOES"]
+    nomes = ["DESATIVAR_USUARIOS", "GERENCIAR_PERMISSOES", "GERENCIAR_ROLES"]
     permissoes = [
         Permissao(i + 1, nome, "descricao", True)
         for i, nome in enumerate(nomes)
@@ -42,5 +43,13 @@ def test_nao_permite_desativar_permissao_protegida(admin_simulado, monkeypatch):
     monkeypatch.setattr(api, "consultar_permissoes", lambda: [protegida])
 
     resposta = client.delete("/permissoes/99")
+
+    assert resposta.status_code == 409
+
+def test_nao_permite_desativar_role_protegida(admin_simulado, monkeypatch):
+    role = Role(5, "ROLE_ADMINISTRADOR", "descricao", True)
+    monkeypatch.setattr(api, "consultar_roles", lambda: [role])
+
+    resposta = client.delete("/roles/5")
 
     assert resposta.status_code == 409

@@ -556,9 +556,9 @@ def excluir_permissao(
     )
 ):
     alvo = next(
-    (p for p in consultar_permissoes() if p.id == permissao_id),
-    None,
-)
+        (p for p in consultar_permissoes() if p.id == permissao_id),
+        None,
+    )
     if alvo is not None and alvo.nome in PERMISSOES_PROTEGIDAS:
         raise HTTPException(
             status_code=409,
@@ -746,6 +746,7 @@ def atualizar_role_api(
     dados: RoleAtualizacao,
     usuario_autenticado=Depends(exigir_permissao("GERENCIAR_ROLES"))
 ):
+    bloquear_role_protegida(role_id)
     role_existente = next(
         (r for r in consultar_roles() if r.id == role_id),
         None,
@@ -791,6 +792,7 @@ def desativar_role_api(
     role_id: int,
     usuario_autenticado=Depends(exigir_permissao("GERENCIAR_ROLES"))
 ):
+    bloquear_role_protegida(role_id)
     try:
         desativar_role(role_id)
         logger.info(
