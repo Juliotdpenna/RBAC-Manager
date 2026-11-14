@@ -5,6 +5,7 @@ from pydantic import BaseModel, Field, field_validator
 from fastapi.middleware.cors import CORSMiddleware
 from utils.rate_limiting import verificar_limite, registrar_tentativa_falha
 from utils.logs import logger
+from typing import Annotated
 
 from utils.seguranca import (
     verificar_senha,
@@ -74,6 +75,9 @@ PERMISSOES_PROTEGIDAS = {
 }
 ROLE_PROTEGIDA = "ROLE_ADMINISTRADOR"
 
+Nome = Annotated[str, Field(max_length=100)]
+Descricao = Annotated[str, Field(max_length=255)]
+Matricula = Annotated[str, Field(max_length=50)]
 
 def bloquear_role_protegida(role_id: int):
     role = next((r for r in consultar_roles() if r.id == role_id), None)
@@ -92,8 +96,8 @@ def exigir_posse_das_permissoes(usuario, permissoes):
         )
 
 class UsuarioCriacao(BaseModel):
-    nome: str
-    matricula: str
+    nome: Nome
+    matricula: Matricula
     departamento: str
     cargo: str
     senha: str = Field(min_length=12, max_length=128)
@@ -109,8 +113,8 @@ class UsuarioCriacao(BaseModel):
         return valor
 
 class UsuarioAtualizacao(BaseModel):
-    nome: str
-    matricula: str
+    nome: Nome
+    matricula: Matricula
     departamento: str
     cargo: str
 
@@ -125,8 +129,8 @@ class UsuarioAtualizacao(BaseModel):
         return valor
 
 class RoleEntrada(BaseModel):
-    nome: str
-    descricao: str
+    nome: Nome
+    descricao: Descricao
 
     @field_validator("nome", "descricao")
     @classmethod
@@ -139,8 +143,8 @@ class RoleEntrada(BaseModel):
         return valor
 
 class RoleAtualizacao(BaseModel):
-    nome: str
-    descricao: str
+    nome: Nome
+    descricao: Descricao
 
     @field_validator("nome", "descricao")
     @classmethod
@@ -153,8 +157,8 @@ class RoleAtualizacao(BaseModel):
         return valor
 
 class PermissaoEntrada(BaseModel):
-    nome: str
-    descricao: str
+    nome: Nome
+    descricao: Descricao
     status: bool
 
     @field_validator("nome", "descricao")
@@ -168,8 +172,8 @@ class PermissaoEntrada(BaseModel):
         return valor
 
 class PermissaoAtualizacao(BaseModel):
-    nome: str
-    descricao: str
+    nome: Nome
+    descricao: Descricao
 
     @field_validator("nome", "descricao")
     @classmethod
@@ -184,7 +188,9 @@ class PermissaoAtualizacao(BaseModel):
 class LoginEntrada(BaseModel):
     matricula: str = Field(min_length=1)
     senha: str = Field(min_length=1)
-
+    matricula: str = Field(min_length=1, max_length=50)
+    senha: str = Field(min_length=1, max_length=128)
+    
     @field_validator("matricula")
     @classmethod
     def validar_matricula(cls, valor):
@@ -199,6 +205,8 @@ class GrupoEntrada(BaseModel):
     nome: str = Field(min_length=1)
     descricao: str = Field(min_length=1)
     status: bool
+    nome: str = Field(min_length=1, max_length=100)
+    descricao: str = Field(min_length=1, max_length=255)
 
     @field_validator("nome", "descricao")
     @classmethod
@@ -211,8 +219,8 @@ class GrupoEntrada(BaseModel):
         return valor
 
 class GrupoAtualizacao(BaseModel):
-    nome: str
-    descricao: str
+    nome: Nome
+    descricao: Descricao
 
     @field_validator("nome", "descricao")
     @classmethod

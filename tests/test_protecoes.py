@@ -84,3 +84,11 @@ def test_concede_permissao_que_possui(admin_simulado, monkeypatch):
     resposta = client.post("/roles/5/permissoes/50")
 
     assert resposta.status_code == 200
+
+def test_rejeita_nome_de_role_gigante(admin_simulado):
+    resposta = client.post(
+        "/roles",
+        json={"nome": "a" * 101, "descricao": "descricao"},
+    )
+
+    assert resposta.status_code == 422

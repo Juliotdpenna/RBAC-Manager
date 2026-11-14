@@ -111,3 +111,11 @@ def test_login_com_matricula_inexistente(monkeypatch):
     )
 
     assert resposta.status_code == 401
+
+def test_login_com_senha_gigante():
+    resposta = client.post(
+        "/auth/login",
+        json={"matricula": "12345", "senha": "a" * 100_000},
+    )
+
+    assert resposta.status_code == 422
