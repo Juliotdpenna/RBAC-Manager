@@ -18,12 +18,20 @@ TEMPO_EXPIRACAO_MINUTOS = 15
 
 bearer_scheme = HTTPBearer(auto_error=False)
 
+TAMANHO_MINIMO_CHAVE = 32
+CHAVES_PROIBIDAS = {"coloque_uma_chave_secreta_aqui"}
+
 def obter_chave_secreta() -> str:
     chave = os.getenv("JWT_SECRET_KEY")
 
     if not chave:
         raise RuntimeError(
             "A variável de ambiente JWT_SECRET_KEY não foi configurada."
+        )
+
+    if chave in CHAVES_PROIBIDAS or len(chave) < TAMANHO_MINIMO_CHAVE:
+        raise RuntimeError(
+            "JWT_SECRET_KEY fraca: use pelo menos 32 caracteres aleatórios."
         )
 
     return chave

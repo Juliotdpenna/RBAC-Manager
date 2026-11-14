@@ -132,7 +132,7 @@ Copy-Item .env.example .env
 
 Configure as variáveis:
 
-- `JWT_SECRET`: substitua o valor de exemplo por uma chave secreta forte e aleatória.
+- `JWT_SECRET_KEY`: substitua o valor de exemplo por uma chave secreta forte e aleatória com pelo menos 32 caracteres.
 - `ADMIN_MATRICULA`: informe a matrícula que será utilizada pelo primeiro administrador.
 
 **Importante:** não compartilhe nem publique o arquivo `.env`. Ele contém informações sensíveis do ambiente.

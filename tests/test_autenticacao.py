@@ -28,3 +28,16 @@ def test_rejeitar_token_invalido():
     payload = decodificar_access_token("token.invalido")
 
     assert payload is None
+
+def test_rejeita_chave_curta(monkeypatch):
+    monkeypatch.setenv("JWT_SECRET_KEY", "abc")
+
+    with pytest.raises(RuntimeError, match="fraca"):
+        criar_access_token(1)
+
+
+def test_rejeita_chave_de_exemplo(monkeypatch):
+    monkeypatch.setenv("JWT_SECRET_KEY", "coloque_uma_chave_secreta_aqui")
+
+    with pytest.raises(RuntimeError, match="fraca"):
+        criar_access_token(1)
