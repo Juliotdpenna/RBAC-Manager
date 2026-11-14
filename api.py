@@ -6,6 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from utils.rate_limiting import verificar_limite, registrar_tentativa_falha
 from utils.logs import logger
 from typing import Annotated
+from utils.configuracao import configuracao_docs, obter_origens_permitidas
 
 from utils.seguranca import (
     verificar_senha,
@@ -56,17 +57,15 @@ app = FastAPI(
     title="Plataforma RBAC",
     description="API de gerenciamento de controle de acesso baseado em funções",
     version="0.1.0",
+    **configuracao_docs(),
 )
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173",
-        "http://127.0.0.1:5173",
-    ],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origins=obter_origens_permitidas(),
+    allow_credentials=False,
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE"],
+    allow_headers=["Authorization", "Content-Type"],
 )
 
 PERMISSOES_PROTEGIDAS = {
