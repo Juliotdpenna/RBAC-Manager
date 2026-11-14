@@ -61,3 +61,26 @@ def test_nao_permite_remover_permissao_da_role_protegida(admin_simulado, monkeyp
     resposta = client.delete("/roles/5/permissoes/1")
 
     assert resposta.status_code == 409
+
+def test_nao_concede_permissao_que_nao_possui(admin_simulado, monkeypatch):
+    admin_simulado.pode_acessar = (
+        lambda permissao: permissao.nome == "GERENCIAR_ROLES"
+    )
+    alvo = Permissao(50, "VISUALIZAR_CRM", "descricao", True)
+    monkeypatch.setattr(api, "consultar_permissoes", lambda: [alvo])
+
+    resposta = client.post("/roles/5/permissoes/50")
+
+    assert resposta.status_code == 403
+
+
+def test_concede_permissao_que_possui(admin_simulado, monkeypatch):
+    alvo = Permissao(50, "VISUALIZAR_CRM", "descricao", True)
+    monkeypatch.setattr(api, "consultar_permissoes", lambda: [alvo])
+    monkeypatch.setattr(
+        api, "associar_permissao_role", lambda role_id, permissao_id: None
+    )
+
+    resposta = client.post("/roles/5/permissoes/50")
+
+    assert resposta.status_code == 200

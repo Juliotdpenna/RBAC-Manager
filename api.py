@@ -84,6 +84,13 @@ def bloquear_role_protegida(role_id: int):
             detail="Esta Role é protegida e não pode ser alterada.",
         )
 
+def exigir_posse_das_permissoes(usuario, permissoes):
+    if any(not usuario.pode_acessar(p) for p in permissoes):
+        raise HTTPException(
+            status_code=403,
+            detail="Você não pode conceder permissões que não possui.",
+        )
+
 class UsuarioCriacao(BaseModel):
     nome: str
     matricula: str
@@ -685,6 +692,24 @@ def associar_permissao_a_role(
     permissao_id: int,
     usuario_autenticado=Depends(exigir_permissao("GERENCIAR_ROLES"))
 ):
+    permissao = next(
+        (p for p in consultar_permissoes() if p.id == permissao_id),
+        None,
+    )
+
+    if permissao is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Permissão não encontrada.",
+        )
+
+    if not permissao.status:
+        raise HTTPException(
+            status_code=409,
+            detail="Permissão desativada.",
+        )
+
+    exigir_posse_das_permissoes(usuario_autenticado, [permissao])
 
     try:
         associar_permissao_role(role_id, permissao_id)
@@ -1264,6 +1289,11 @@ def adicionar_role_ao_grupo(
 
     if any(r.id == role_id for r in grupo.roles):
         raise HTTPException(status_code=409, detail="Role já pertence ao grupo.")
+
+    exigir_posse_das_permissoes(
+        usuario_autenticado,
+        [p for p in role.permissoes if p.status],
+    )
 
     try:
         associar_role_grupo(grupo_id, role_id)
