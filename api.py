@@ -67,6 +67,23 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+PERMISSOES_PROTEGIDAS = {
+    "GERENCIAR_PERMISSOES",
+    "GERENCIAR_ROLES",
+    "GERENCIAR_GRUPOS",
+}
+ROLE_PROTEGIDA = "ROLE_ADMINISTRADOR"
+
+
+def bloquear_role_protegida(role_id: int):
+    role = next((r for r in consultar_roles() if r.id == role_id), None)
+
+    if role is not None and role.nome == ROLE_PROTEGIDA:
+        raise HTTPException(
+            status_code=409,
+            detail="Esta Role é protegida e não pode ser alterada.",
+        )
+
 class UsuarioCriacao(BaseModel):
     nome: str
     matricula: str
@@ -363,6 +380,13 @@ def excluir_usuario(
     usuario_id: int,
     usuario_autenticado=Depends(exigir_permissao("DESATIVAR_USUARIOS"))
 ):
+    
+    if usuario_id == usuario_autenticado.id:
+        raise HTTPException(
+            status_code=400,
+            detail="Você não pode desativar a própria conta.",
+        )
+    
     try:
         desativar_usuario(usuario_id)
         logger.info(
@@ -531,6 +555,15 @@ def excluir_permissao(
         exigir_permissao("GERENCIAR_PERMISSOES")
     )
 ):
+    alvo = next(
+    (p for p in consultar_permissoes() if p.id == permissao_id),
+    None,
+)
+    if alvo is not None and alvo.nome in PERMISSOES_PROTEGIDAS:
+        raise HTTPException(
+            status_code=409,
+            detail="Esta permissão é protegida e não pode ser desativada.",
+        )
     try:
         desativar_permissao(permissao_id)
         logger.info(
@@ -573,6 +606,11 @@ def atualizar_permissao_api(
         raise HTTPException(
             status_code=404,
             detail="Permissão não encontrada.",
+        )
+    if permissao_existente.nome in PERMISSOES_PROTEGIDAS:
+        raise HTTPException(
+            status_code=409,
+            detail="Esta permissão é protegida e não pode ser alterada.",
         )
 
     permissao_existente.nome = dados.nome
