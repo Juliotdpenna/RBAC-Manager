@@ -53,3 +53,11 @@ def test_nao_permite_desativar_role_protegida(admin_simulado, monkeypatch):
     resposta = client.delete("/roles/5")
 
     assert resposta.status_code == 409
+
+def test_nao_permite_remover_permissao_da_role_protegida(admin_simulado, monkeypatch):
+    role = Role(5, "ROLE_ADMINISTRADOR", "descricao", True)
+    monkeypatch.setattr(api, "consultar_roles", lambda: [role])
+
+    resposta = client.delete("/roles/5/permissoes/1")
+
+    assert resposta.status_code == 409

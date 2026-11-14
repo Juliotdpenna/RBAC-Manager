@@ -856,6 +856,7 @@ def remover_permissao_da_role(
     permissao_id: int,
     usuario_autenticado=Depends(exigir_permissao("GERENCIAR_ROLES"))
 ):
+    bloquear_role_protegida(role_id)
     try:
         desassociar_permissao_role(role_id, permissao_id)
         logger.info(
