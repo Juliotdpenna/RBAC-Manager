@@ -42,10 +42,12 @@ def redefinir_senha():
             raise ValueError(
                 "A senha precisa ter pelo menos 12 caracteres."
             )
+
         if len(senha) > 128:
             raise ValueError(
                 "A senha pode ter no máximo 128 caracteres."
             )
+
         if senha != confirmacao:
             raise ValueError("As senhas não coincidem.")
 

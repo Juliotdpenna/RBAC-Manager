@@ -30,7 +30,6 @@ def criar_tabelas(caminho_banco=None):
                 "ALTER TABLE usuarios ADD COLUMN senha_hash TEXT"
             )
 
-
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS roles (
                 id INTEGER PRIMARY KEY,
