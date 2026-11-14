@@ -5,6 +5,7 @@ import jwt
 from dotenv import load_dotenv
 from fastapi import Depends, HTTPException
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from utils.logs import logger
 
 from database.repositorio import (
     consultar_permissoes,
@@ -126,14 +127,24 @@ def exigir_permissao(nome_permissao: str):
             ),
             None,
         )
-
+        
         if permissao is None or not permissao.status:
+            logger.warning(
+                "ACESSO_NEGADO | Usuario_ID=%s | Permissao=%s | Motivo=Permissao_inexistente_ou_desativada",
+                usuario.id,
+                nome_permissao,
+            )
             raise HTTPException(
                 status_code=403,
                 detail="Permissão inexistente ou desativada.",
             )
 
         if not usuario.pode_acessar(permissao):
+            logger.warning(
+                "ACESSO_NEGADO | Usuario_ID=%s | Permissao=%s | Motivo=Sem_permissao",
+                usuario.id,
+                nome_permissao,
+            )
             raise HTTPException(
                 status_code=403,
                 detail="Você não possui permissão para esta operação.",

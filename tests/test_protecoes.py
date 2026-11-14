@@ -113,3 +113,12 @@ def test_rejeita_nome_de_role_gigante(admin_simulado):
     )
 
     assert resposta.status_code == 422
+
+def test_acesso_negado_gera_log(admin_simulado, caplog):
+    admin_simulado.pode_acessar = lambda permissao: False
+
+    with caplog.at_level("WARNING", logger="rbac.autenticacao"):
+        resposta = client.delete("/usuarios/9")
+
+    assert resposta.status_code == 403
+    assert "ACESSO_NEGADO" in caplog.text
