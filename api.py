@@ -1376,7 +1376,7 @@ def realizar_login(dados: LoginEntrada, request: Request):
 
     if not status or not senha_hash:
         registrar_tentativa_falha(ip, dados.matricula)
-        verificar_senha_falsa(dados.senha)  
+        verificar_senha_falsa(dados.senha)
         logger.warning(
             "LOGIN_FALHA | Usuario_ID=%s | Motivo=Usuario_inativo_ou_sem_hash | IP=%s",
             usuario_id,

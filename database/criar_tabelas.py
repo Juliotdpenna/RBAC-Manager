@@ -30,14 +30,6 @@ def criar_tabelas(caminho_banco=None):
                 "ALTER TABLE usuarios ADD COLUMN senha_hash TEXT"
             )
 
-        cursor.execute("""
-            SELECT
-                COUNT(*) AS total_usuarios,
-                SUM(CASE WHEN senha_hash IS NOT NULL OR senha_hash = '' THEN 1 ELSE 0 END) AS sem_hash
-            FROM usuarios
-        """)
-
-        print(cursor.fetchone())
 
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS roles (
