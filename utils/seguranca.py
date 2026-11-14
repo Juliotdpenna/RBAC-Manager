@@ -26,3 +26,10 @@ def verificar_senha(senha: str, senha_hash: str) -> bool:
         InvalidHashError,
     ):
         return False
+
+HASH_FALSO = hasher.hash("senha-falsa-para-igualar-o-tempo")
+
+
+def verificar_senha_falsa(senha: str) -> None:
+    """Gasta o mesmo tempo de uma verificação real (evita enumeração por tempo)."""
+    verificar_senha(senha, HASH_FALSO)

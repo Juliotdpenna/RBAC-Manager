@@ -119,3 +119,19 @@ def test_login_com_senha_gigante():
     )
 
     assert resposta.status_code == 422
+
+def test_login_matricula_inexistente_executa_verificacao_falsa(monkeypatch):
+    chamadas = []
+
+    monkeypatch.setattr(api, "consultar_usuario_login", lambda matricula: None)
+    monkeypatch.setattr(
+        api, "verificar_senha_falsa", lambda senha: chamadas.append(senha)
+    )
+
+    resposta = client.post(
+        "/auth/login",
+        json={"matricula": "99999", "senha": "senha-ficticia"},
+    )
+
+    assert resposta.status_code == 401
+    assert chamadas == ["senha-ficticia"]

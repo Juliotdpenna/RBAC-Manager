@@ -9,6 +9,7 @@ from typing import Annotated
 
 from utils.seguranca import (
     verificar_senha,
+    verificar_senha_falsa,
     gerar_hash_senha,
 )
 from utils.autenticacao import (
@@ -1345,6 +1346,7 @@ def realizar_login(dados: LoginEntrada, request: Request):
 
     if registro is None:
         registrar_tentativa_falha(ip)
+        verificar_senha_falsa(dados.senha)
         logger.warning(
             "LOGIN_FALHA | Motivo=Usuario_nao_encontrado | IP=%s",
             ip
