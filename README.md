@@ -29,11 +29,14 @@ O projeto tem como foco o aprendizado prático de Python, desenvolvimento de API
 - Autenticação baseada em tokens JWT.
 - Validação de tokens e controle de expiração.
 - Proteção das rotas administrativas por autenticação e autorização.
-- Limitação de tentativas de login (Rate Limiting).
-
-**Observação sobre o Rate Limiting:** O controle de tentativas de login utiliza armazenamento em memória, sendo limitado a uma única instância da aplicação. Os registros são reiniciados quando a aplicação é encerrada ou reiniciada.
-
-- Registro de eventos de autenticação e operações administrativas (Logs de Auditoria).
+- Limitação de tentativas de login (Rate Limiting) por IP e por matrícula.
+- Tempo de resposta do login equalizado para dificultar a enumeração de matrículas.
+- Validação de força da `JWT_SECRET_KEY` na inicialização (mínimo de 32 caracteres, valor de exemplo recusado).
+- Limites de tamanho nos campos de entrada, inclusive na senha do login.
+- Proteção contra lockout administrativo: não é possível desativar a própria conta, e a Role administrativa e as permissões de gerenciamento são protegidas contra edição e desativação.
+- Menor privilégio na concessão de acessos: só é possível conceder permissões que o próprio usuário possui (ao associar permissões a Roles, Roles a grupos e usuários a grupos).
+- Registro de eventos de autenticação, operações administrativas e acessos negados (Logs de Auditoria), com rotação de arquivos.
+- Documentação interativa (`/docs`) desligada por padrão e CORS configurável por variável de ambiente.
 
 ### Interface web
 
@@ -47,6 +50,7 @@ O projeto tem como foco o aprendizado prático de Python, desenvolvimento de API
 - Testes automatizados com pytest.
 - Testes de endpoints e regras de negócio.
 - Verificações de autenticação, autorização e segurança.
+- Testes de proteção contra lockout, escalonamento de privilégio, rate limiting e configuração por ambiente.
 
 ## Tecnologias utilizadas
 
@@ -72,13 +76,15 @@ O projeto tem como foco o aprendizado prático de Python, desenvolvimento de API
 - Identity and Access Management (IAM).
 - Role-Based Access Control (RBAC).
 - Princípio do menor privilégio.
-- Segregação de funções (SoD).
 - Autenticação e autorização.
 - Hash de senhas.
 - JSON Web Tokens (JWT).
 - Controle de sessões e expiração de tokens.
 - Rate Limiting.
 - Logs de auditoria.
+- Defesa em profundidade.
+- Mitigação de enumeração de usuários.
+- Proteção contra escalonamento de privilégio.
 
 ## Como executar o projeto
 
@@ -134,6 +140,8 @@ Configure as variáveis:
 
 - `JWT_SECRET_KEY`: substitua o valor de exemplo por uma chave secreta forte e aleatória com pelo menos 32 caracteres.
 - `ADMIN_MATRICULA`: informe a matrícula que será utilizada pelo primeiro administrador.
+- `APP_ENV`: use `development` para desenvolvimento local. Qualquer outro valor (ou a ausência da variável) é tratado como produção e desliga a documentação interativa (`/docs`, `/redoc` e `/openapi.json`).
+- `CORS_ORIGINS` (opcional): lista de origens permitidas, separadas por vírgula. O padrão cobre o frontend local em `http://localhost:5173` e `http://127.0.0.1:5173`.
 
 **Importante:** não compartilhe nem publique o arquivo `.env`. Ele contém informações sensíveis do ambiente.
 
@@ -183,7 +191,7 @@ A API estará disponível em:
 
 `http://127.0.0.1:8000`
 
-A documentação interativa estará disponível em:
+Com `APP_ENV=development`, a documentação interativa estará disponível em:
 
 `http://127.0.0.1:8000/docs`
 
@@ -238,25 +246,20 @@ Projeto_RBAC/
 ├── criar_administrador_inicial.py
 ├── main.py
 ├── README.md
+├── redefinir_senha_admin.py
 └── requirements.txt
 ```
+## Notas de segurança e operação
+
+- Depois de criar permissões novas, execute `python configurar_administrador.py` novamente para que o administrador passe a possuí-las (só é possível conceder permissões que se possui).
+- Em qualquer ambiente real, publique a API e o frontend atrás de HTTPS. Atrás de proxy reverso, inicie o servidor com `--proxy-headers` e `--forwarded-allow-ips` para que o limite por IP use o IP real do cliente.
+- O controle de tentativas de login usa armazenamento em memória, adequado a uma única instância da aplicação, e é reiniciado junto com ela.
 
 ## Status do projeto
 
 **Em desenvolvimento — MVP funcional.**
 
 O projeto já conta com gerenciamento de acessos, persistência em banco de dados, API REST, autenticação, autorização, interface web, testes automatizados e mecanismos iniciais de segurança.
-
-## Próximas evoluções
-
-- Aprimoramento do dashboard e dos relatórios.
-- Evolução dos registros de auditoria.
-- Fluxos de aprovação de acessos.
-- Implementação de MFA (Autenticação Multifator).
-- Evolução do controle de sessões.
-- Implementação de ABAC (Attribute-Based Access Control).
-- Integração com provedores de identidade (IdP), LDAP e Active Directory.
-- Containerização e melhorias de implantação.
 
 ## Objetivo de aprendizado
 
