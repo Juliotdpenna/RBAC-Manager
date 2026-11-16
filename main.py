@@ -1,4 +1,3 @@
-
 from models.role import Role
 from models.permissao import Permissao
 from models.usuario import Usuario

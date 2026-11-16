@@ -1,35 +1,53 @@
 import time
 from threading import Lock
 
-LIMITE_TENTATIVAS = 5
 JANELA_TEMPO = 60
+LIMITE_POR_IP = 5
+LIMITE_POR_MATRICULA = 10
 
 tentativas_login = {}
 lock = Lock()
 
 
-def verificar_limite(ip: str) -> bool:
+def _chaves(ip, matricula):
+    chaves = [("ip", ip)]
+
+    if matricula:
+        chaves.append(("matricula", matricula.strip().lower()))
+
+    return chaves
+
+
+def _limpar(agora):
+    for chave in list(tentativas_login):
+        recentes = [
+            t for t in tentativas_login[chave]
+            if agora - t < JANELA_TEMPO
+        ]
+
+        if recentes:
+            tentativas_login[chave] = recentes
+        else:
+            del tentativas_login[chave]
+
+
+def verificar_limite(ip, matricula=None):
+    agora = time.monotonic()
+    limites = {"ip": LIMITE_POR_IP, "matricula": LIMITE_POR_MATRICULA}
+
+    with lock:
+        _limpar(agora)
+
+        for chave in _chaves(ip, matricula):
+            if len(tentativas_login.get(chave, [])) >= limites[chave[0]]:
+                return False
+
+        return True
+
+
+def registrar_tentativa_falha(ip, matricula=None):
     agora = time.monotonic()
 
     with lock:
-        # Remove tentativas antigas de todos os IPs.
-        for endereco in list(tentativas_login):
-            tentativas_login[endereco] = [
-                tentativa
-                for tentativa in tentativas_login[endereco]
-                if agora - tentativa < JANELA_TEMPO
-            ]
-
-            if not tentativas_login[endereco]:
-                del tentativas_login[endereco]
-
-        tentativas = tentativas_login.get(ip, [])
-
-        return len(tentativas) < LIMITE_TENTATIVAS
-
-
-def registrar_tentativa_falha(ip: str):
-    agora = time.monotonic()
-
-    with lock:
-        tentativas_login.setdefault(ip, []).append(agora)
+        for chave in _chaves(ip, matricula):
+            tentativas_login.setdefault(chave, []).append(agora)

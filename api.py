@@ -5,9 +5,12 @@ from pydantic import BaseModel, Field, field_validator
 from fastapi.middleware.cors import CORSMiddleware
 from utils.rate_limiting import verificar_limite, registrar_tentativa_falha
 from utils.logs import logger
+from typing import Annotated
+from utils.configuracao import configuracao_docs, obter_origens_permitidas
 
 from utils.seguranca import (
     verificar_senha,
+    verificar_senha_falsa,
     gerar_hash_senha,
 )
 from utils.autenticacao import (
@@ -54,24 +57,52 @@ app = FastAPI(
     title="Plataforma RBAC",
     description="API de gerenciamento de controle de acesso baseado em funções",
     version="0.1.0",
+    **configuracao_docs(),
 )
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173",
-        "http://127.0.0.1:5173",
-    ],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origins=obter_origens_permitidas(),
+    allow_credentials=False,
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE"],
+    allow_headers=["Authorization", "Content-Type"],
 )
 
+PERMISSOES_PROTEGIDAS = {
+    "GERENCIAR_PERMISSOES",
+    "GERENCIAR_ROLES",
+    "GERENCIAR_GRUPOS",
+}
+ROLE_PROTEGIDA = "ROLE_ADMINISTRADOR"
+
+Nome = Annotated[str, Field(max_length=100)]
+Descricao = Annotated[str, Field(max_length=255)]
+Matricula = Annotated[str, Field(max_length=50)]
+
+
+def bloquear_role_protegida(role_id: int):
+    role = next((r for r in consultar_roles() if r.id == role_id), None)
+
+    if role is not None and role.nome == ROLE_PROTEGIDA:
+        raise HTTPException(
+            status_code=409,
+            detail="Esta Role é protegida e não pode ser alterada.",
+        )
+
+
+def exigir_posse_das_permissoes(usuario, permissoes):
+    if any(not usuario.pode_acessar(p) for p in permissoes):
+        raise HTTPException(
+            status_code=403,
+            detail="Você não pode conceder permissões que não possui.",
+        )
+
+
 class UsuarioCriacao(BaseModel):
-    nome: str
-    matricula: str
-    departamento: str
-    cargo: str
+    nome: Nome
+    matricula: Matricula
+    departamento: Nome
+    cargo: Nome
     senha: str = Field(min_length=12, max_length=128)
 
     @field_validator("nome", "matricula", "departamento", "cargo")
@@ -85,10 +116,10 @@ class UsuarioCriacao(BaseModel):
         return valor
 
 class UsuarioAtualizacao(BaseModel):
-    nome: str
-    matricula: str
-    departamento: str
-    cargo: str
+    nome: Nome
+    matricula: Matricula
+    departamento: Nome
+    cargo: Nome
 
     @field_validator("nome", "matricula", "departamento", "cargo")
     @classmethod
@@ -101,8 +132,8 @@ class UsuarioAtualizacao(BaseModel):
         return valor
 
 class RoleEntrada(BaseModel):
-    nome: str
-    descricao: str
+    nome: Nome
+    descricao: Descricao
 
     @field_validator("nome", "descricao")
     @classmethod
@@ -115,8 +146,8 @@ class RoleEntrada(BaseModel):
         return valor
 
 class RoleAtualizacao(BaseModel):
-    nome: str
-    descricao: str
+    nome: Nome
+    descricao: Descricao
 
     @field_validator("nome", "descricao")
     @classmethod
@@ -129,8 +160,8 @@ class RoleAtualizacao(BaseModel):
         return valor
 
 class PermissaoEntrada(BaseModel):
-    nome: str
-    descricao: str
+    nome: Nome
+    descricao: Descricao
     status: bool
 
     @field_validator("nome", "descricao")
@@ -144,8 +175,8 @@ class PermissaoEntrada(BaseModel):
         return valor
 
 class PermissaoAtualizacao(BaseModel):
-    nome: str
-    descricao: str
+    nome: Nome
+    descricao: Descricao
 
     @field_validator("nome", "descricao")
     @classmethod
@@ -158,8 +189,8 @@ class PermissaoAtualizacao(BaseModel):
         return valor
 
 class LoginEntrada(BaseModel):
-    matricula: str = Field(min_length=1)
-    senha: str = Field(min_length=1)
+    matricula: str = Field(min_length=1, max_length=50)
+    senha: str = Field(min_length=1, max_length=128)
 
     @field_validator("matricula")
     @classmethod
@@ -172,8 +203,8 @@ class LoginEntrada(BaseModel):
         return valor
 
 class GrupoEntrada(BaseModel):
-    nome: str = Field(min_length=1)
-    descricao: str = Field(min_length=1)
+    nome: str = Field(min_length=1, max_length=100)
+    descricao: str = Field(min_length=1, max_length=255)
     status: bool
 
     @field_validator("nome", "descricao")
@@ -187,8 +218,8 @@ class GrupoEntrada(BaseModel):
         return valor
 
 class GrupoAtualizacao(BaseModel):
-    nome: str
-    descricao: str
+    nome: Nome
+    descricao: Descricao
 
     @field_validator("nome", "descricao")
     @classmethod
@@ -346,7 +377,12 @@ def atualizar_usuario_api(
             status_code=409,
             detail="A matrícula informada já está cadastrada.",
         )
-
+    except ValueError:
+        raise HTTPException(
+            status_code=404,
+            detail="Usuário não encontrado.",
+        )
+       
     except Exception:
         raise HTTPException(
             status_code=500,
@@ -363,6 +399,13 @@ def excluir_usuario(
     usuario_id: int,
     usuario_autenticado=Depends(exigir_permissao("DESATIVAR_USUARIOS"))
 ):
+    
+    if usuario_id == usuario_autenticado.id:
+        raise HTTPException(
+            status_code=400,
+            detail="Você não pode desativar a própria conta.",
+        )
+    
     try:
         desativar_usuario(usuario_id)
         logger.info(
@@ -531,6 +574,15 @@ def excluir_permissao(
         exigir_permissao("GERENCIAR_PERMISSOES")
     )
 ):
+    alvo = next(
+        (p for p in consultar_permissoes() if p.id == permissao_id),
+        None,
+    )
+    if alvo is not None and alvo.nome in PERMISSOES_PROTEGIDAS:
+        raise HTTPException(
+            status_code=409,
+            detail="Esta permissão é protegida e não pode ser desativada.",
+        )
     try:
         desativar_permissao(permissao_id)
         logger.info(
@@ -573,6 +625,11 @@ def atualizar_permissao_api(
         raise HTTPException(
             status_code=404,
             detail="Permissão não encontrada.",
+        )
+    if permissao_existente.nome in PERMISSOES_PROTEGIDAS:
+        raise HTTPException(
+            status_code=409,
+            detail="Esta permissão é protegida e não pode ser alterada.",
         )
 
     permissao_existente.nome = dados.nome
@@ -647,6 +704,24 @@ def associar_permissao_a_role(
     permissao_id: int,
     usuario_autenticado=Depends(exigir_permissao("GERENCIAR_ROLES"))
 ):
+    permissao = next(
+        (p for p in consultar_permissoes() if p.id == permissao_id),
+        None,
+    )
+
+    if permissao is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Permissão não encontrada.",
+        )
+
+    if not permissao.status:
+        raise HTTPException(
+            status_code=409,
+            detail="Permissão desativada.",
+        )
+
+    exigir_posse_das_permissoes(usuario_autenticado, [permissao])
 
     try:
         associar_permissao_role(role_id, permissao_id)
@@ -708,6 +783,7 @@ def atualizar_role_api(
     dados: RoleAtualizacao,
     usuario_autenticado=Depends(exigir_permissao("GERENCIAR_ROLES"))
 ):
+    bloquear_role_protegida(role_id)
     role_existente = next(
         (r for r in consultar_roles() if r.id == role_id),
         None,
@@ -753,6 +829,7 @@ def desativar_role_api(
     role_id: int,
     usuario_autenticado=Depends(exigir_permissao("GERENCIAR_ROLES"))
 ):
+    bloquear_role_protegida(role_id)
     try:
         desativar_role(role_id)
         logger.info(
@@ -816,6 +893,7 @@ def remover_permissao_da_role(
     permissao_id: int,
     usuario_autenticado=Depends(exigir_permissao("GERENCIAR_ROLES"))
 ):
+    bloquear_role_protegida(role_id)
     try:
         desassociar_permissao_role(role_id, permissao_id)
         logger.info(
@@ -1171,6 +1249,17 @@ def adicionar_usuario_ao_grupo(
     if any(u.id == usuario_id for u in grupo.usuarios):
         raise HTTPException(status_code=409, detail="Usuário já pertence ao grupo.")
 
+    exigir_posse_das_permissoes(
+        usuario_autenticado,
+        [
+            p
+            for r in grupo.roles
+            if r.status
+            for p in r.permissoes
+            if p.status
+        ],
+    )
+
     try:
         associar_usuario_grupo(grupo_id, usuario_id)
         logger.info(
@@ -1224,6 +1313,11 @@ def adicionar_role_ao_grupo(
     if any(r.id == role_id for r in grupo.roles):
         raise HTTPException(status_code=409, detail="Role já pertence ao grupo.")
 
+    exigir_posse_das_permissoes(
+        usuario_autenticado,
+        [p for p in role.permissoes if p.status],
+    )
+
     try:
         associar_role_grupo(grupo_id, role_id)
         logger.info(
@@ -1253,7 +1347,7 @@ def adicionar_role_ao_grupo(
 def realizar_login(dados: LoginEntrada, request: Request):
     ip = request.client.host if request.client else "desconhecido"
 
-    if not verificar_limite(ip):
+    if not verificar_limite(ip, dados.matricula):
         logger.warning(
             "LOGIN_BLOQUEADO | IP=%s",
             ip
@@ -1266,7 +1360,8 @@ def realizar_login(dados: LoginEntrada, request: Request):
     registro = consultar_usuario_login(dados.matricula)
 
     if registro is None:
-        registrar_tentativa_falha(ip)
+        registrar_tentativa_falha(ip, dados.matricula)
+        verificar_senha_falsa(dados.senha)
         logger.warning(
             "LOGIN_FALHA | Motivo=Usuario_nao_encontrado | IP=%s",
             ip
@@ -1279,7 +1374,8 @@ def realizar_login(dados: LoginEntrada, request: Request):
     usuario_id, _, status, senha_hash = registro
 
     if not status or not senha_hash:
-        registrar_tentativa_falha(ip)
+        registrar_tentativa_falha(ip, dados.matricula)
+        verificar_senha_falsa(dados.senha)
         logger.warning(
             "LOGIN_FALHA | Usuario_ID=%s | Motivo=Usuario_inativo_ou_sem_hash | IP=%s",
             usuario_id,
@@ -1291,7 +1387,7 @@ def realizar_login(dados: LoginEntrada, request: Request):
         )
 
     if not verificar_senha(dados.senha, senha_hash):
-        registrar_tentativa_falha(ip)
+        registrar_tentativa_falha(ip, dados.matricula)
         logger.warning(
             "LOGIN_FALHA | Usuario_ID=%s | Motivo=Senha_invalida | IP=%s",
             usuario_id,

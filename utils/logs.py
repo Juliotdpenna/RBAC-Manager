@@ -1,4 +1,5 @@
 import logging
+from logging.handlers import RotatingFileHandler
 from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -12,9 +13,11 @@ logger = logging.getLogger("rbac.autenticacao")
 logger.setLevel(logging.INFO)
 
 if not logger.handlers:
-    handler = logging.FileHandler(
+    handler = RotatingFileHandler(
         ARQUIVO_LOG,
-        encoding="utf-8"
+        maxBytes=1_000_000,
+        backupCount=5,
+        encoding="utf-8",
     )
 
     formato = logging.Formatter(

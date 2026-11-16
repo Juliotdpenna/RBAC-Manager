@@ -9,7 +9,7 @@ __pycache__/
 *.py[cod]
 
 # Arquivos de log
-logs/*.log
+logs/*.log*
 
 # Bancos de dados locais
 *.db

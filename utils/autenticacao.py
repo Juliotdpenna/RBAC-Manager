@@ -5,6 +5,7 @@ import jwt
 from dotenv import load_dotenv
 from fastapi import Depends, HTTPException
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from utils.logs import logger
 
 from database.repositorio import (
     consultar_permissoes,
@@ -18,12 +19,20 @@ TEMPO_EXPIRACAO_MINUTOS = 15
 
 bearer_scheme = HTTPBearer(auto_error=False)
 
+TAMANHO_MINIMO_CHAVE = 32
+CHAVES_PROIBIDAS = {"coloque_uma_chave_secreta_aqui"}
+
 def obter_chave_secreta() -> str:
     chave = os.getenv("JWT_SECRET_KEY")
 
     if not chave:
         raise RuntimeError(
             "A variável de ambiente JWT_SECRET_KEY não foi configurada."
+        )
+
+    if chave in CHAVES_PROIBIDAS or len(chave) < TAMANHO_MINIMO_CHAVE:
+        raise RuntimeError(
+            "JWT_SECRET_KEY fraca: use pelo menos 32 caracteres aleatórios."
         )
 
     return chave
@@ -118,14 +127,24 @@ def exigir_permissao(nome_permissao: str):
             ),
             None,
         )
-
+        
         if permissao is None or not permissao.status:
+            logger.warning(
+                "ACESSO_NEGADO | Usuario_ID=%s | Permissao=%s | Motivo=Permissao_inexistente_ou_desativada",
+                usuario.id,
+                nome_permissao,
+            )
             raise HTTPException(
                 status_code=403,
                 detail="Permissão inexistente ou desativada.",
             )
 
         if not usuario.pode_acessar(permissao):
+            logger.warning(
+                "ACESSO_NEGADO | Usuario_ID=%s | Permissao=%s | Motivo=Sem_permissao",
+                usuario.id,
+                nome_permissao,
+            )
             raise HTTPException(
                 status_code=403,
                 detail="Você não possui permissão para esta operação.",

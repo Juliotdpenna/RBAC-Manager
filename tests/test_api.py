@@ -1,6 +1,7 @@
 from fastapi.testclient import TestClient
+import api
 from api import app
-
+from utils.rate_limiting import LIMITE_POR_IP
 
 client = TestClient(app)
 
@@ -21,8 +22,6 @@ def test_listar_usuarios_sem_token():
     resposta = client.get("/usuarios")
 
     assert resposta.status_code == 401
-
-import api
 
 
 def test_login_com_credenciais_validas(monkeypatch):
@@ -111,3 +110,60 @@ def test_login_com_matricula_inexistente(monkeypatch):
     )
 
     assert resposta.status_code == 401
+
+def test_login_com_senha_gigante():
+    resposta = client.post(
+        "/auth/login",
+        json={"matricula": "12345", "senha": "a" * 100_000},
+    )
+
+    assert resposta.status_code == 422
+
+
+def test_login_usuario_inativo_executa_verificacao_falsa(monkeypatch):
+    chamadas = []
+
+    monkeypatch.setattr(
+        api,
+        "consultar_usuario_login",
+        lambda matricula: (1, "12345", False, "hash-ficticio"),
+    )
+    monkeypatch.setattr(
+        api, "verificar_senha_falsa", lambda senha: chamadas.append(senha)
+    )
+
+    resposta = client.post(
+        "/auth/login",
+        json={"matricula": "12345", "senha": "senha-ficticia"},
+    )
+
+    assert resposta.status_code == 401
+    assert chamadas == ["senha-ficticia"]
+
+
+def test_login_matricula_inexistente_executa_verificacao_falsa(monkeypatch):
+    chamadas = []
+
+    monkeypatch.setattr(api, "consultar_usuario_login", lambda matricula: None)
+    monkeypatch.setattr(
+        api, "verificar_senha_falsa", lambda senha: chamadas.append(senha)
+    )
+
+    resposta = client.post(
+        "/auth/login",
+        json={"matricula": "99999", "senha": "senha-ficticia"},
+    )
+
+    assert resposta.status_code == 401
+    assert chamadas == ["senha-ficticia"]
+
+
+def test_login_retorna_429_apos_tentativas_falhas(monkeypatch):
+    monkeypatch.setattr(api, "consultar_usuario_login", lambda matricula: None)
+    monkeypatch.setattr(api, "verificar_senha_falsa", lambda senha: None)
+    corpo = {"matricula": "99999", "senha": "senha-ficticia"}
+
+    for _ in range(LIMITE_POR_IP):
+        assert client.post("/auth/login", json=corpo).status_code == 401
+
+    assert client.post("/auth/login", json=corpo).status_code == 429

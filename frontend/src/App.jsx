@@ -1,15 +1,22 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import Login from './pages/Login'
 import Dashboard from './pages/Dashboard'
 import Usuarios from './pages/Usuarios'
 import Roles from './pages/Roles'
 import Permissoes from './pages/Permissoes'
-import { limparAccessToken } from './services/api'
+import { limparAccessToken, registrarAoSessaoExpirar } from './services/api'
 import Grupos from './pages/Grupos'
 
 function App() {
   const [usuario, setUsuario] = useState(null)
   const [paginaAtual, setPaginaAtual] = useState('dashboard')
+
+  useEffect(() => {
+    registrarAoSessaoExpirar(() => {
+      setUsuario(null)
+      setPaginaAtual('dashboard')
+    })
+  }, [])
 
   function handleLogin(dadosUsuario) {
     setUsuario(dadosUsuario)

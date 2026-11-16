@@ -349,6 +349,7 @@ function Usuarios({ usuario, onLogout, onNavigate }) {
                     name="nome"
                     value={formulario.nome}
                     onChange={atualizarCampo}
+                    maxLength={100}
                     required
                   />
                 </label>
@@ -360,6 +361,7 @@ function Usuarios({ usuario, onLogout, onNavigate }) {
                     name="matricula"
                     value={formulario.matricula}
                     onChange={atualizarCampo}
+                    maxLength={50}
                     required
                   />
                 </label>
@@ -371,6 +373,7 @@ function Usuarios({ usuario, onLogout, onNavigate }) {
                     name="departamento"
                     value={formulario.departamento}
                     onChange={atualizarCampo}
+                    maxLength={100}
                     required
                   />
                 </label>
@@ -382,6 +385,7 @@ function Usuarios({ usuario, onLogout, onNavigate }) {
                     name="cargo"
                     value={formulario.cargo}
                     onChange={atualizarCampo}
+                    maxLength={100}
                     required
                   />
                 </label>
@@ -396,6 +400,7 @@ function Usuarios({ usuario, onLogout, onNavigate }) {
                         value={formulario.senha}
                         onChange={atualizarCampo}
                         minLength={12}
+                        maxLength={128}
                         autoComplete="new-password"
                         required
                       />
@@ -409,6 +414,7 @@ function Usuarios({ usuario, onLogout, onNavigate }) {
                         value={formulario.confirmarSenha}
                         onChange={atualizarCampo}
                         minLength={12}
+                        maxLength={128}
                         autoComplete="new-password"
                         required
                       />
