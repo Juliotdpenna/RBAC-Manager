@@ -12,6 +12,12 @@ export function limparAccessToken() {
   accessToken = null
 }
 
+let aoSessaoExpirar = null
+
+export function registrarAoSessaoExpirar(callback) {
+  aoSessaoExpirar = callback
+}
+
 export async function fazerRequisicao(endpoint, opcoes = {}) {
   const headers = {
     ...opcoes.headers,
@@ -29,6 +35,11 @@ export async function fazerRequisicao(endpoint, opcoes = {}) {
     ...opcoes,
     headers,
   })
+
+  if (resposta.status === 401 && accessToken) {
+    limparAccessToken()
+    aoSessaoExpirar?.()
+  }
 
   const texto = await resposta.text()
   let dados = null
